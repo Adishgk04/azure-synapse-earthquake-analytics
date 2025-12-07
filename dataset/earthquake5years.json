@@ -1,0 +1,28 @@
+{
+	"name": "earthquake5years",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "earthquake_source",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"PageLimit": {
+				"type": "string",
+				"defaultValue": "20000"
+			},
+			"PageOff": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "RestResource",
+		"typeProperties": {
+			"relativeUrl": {
+				"value": "@concat( 'query?format=geojson','&starttime=', pipeline().parameters.startDate,'&endtime=', pipeline().parameters.endDate,'&orderby=time','&limit=', dataset().PageLimit,'&offset=', dataset().PageOff)",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

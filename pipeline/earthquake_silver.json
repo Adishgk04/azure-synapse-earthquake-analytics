@@ -1,0 +1,259 @@
+{
+	"name": "earthquake_silver",
+	"properties": {
+		"activities": [
+			{
+				"name": "earthquake",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "JsonSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFolderPath": "Earthquake/bronze",
+							"wildcardFileName": "*.json",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "JsonReadSettings"
+						}
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "MergeFiles"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"path": "['properties']['mag']"
+								},
+								"sink": {
+									"name": "mag",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['place']"
+								},
+								"sink": {
+									"name": "place",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['time']"
+								},
+								"sink": {
+									"name": "time",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['updated']"
+								},
+								"sink": {
+									"name": "updated",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['detail']"
+								},
+								"sink": {
+									"name": "detail",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['felt']"
+								},
+								"sink": {
+									"name": "felt",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['cdi']"
+								},
+								"sink": {
+									"name": "cdi",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['mmi']"
+								},
+								"sink": {
+									"name": "mmi",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['alert']"
+								},
+								"sink": {
+									"name": "alert",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['status']"
+								},
+								"sink": {
+									"name": "status",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['tsunami']"
+								},
+								"sink": {
+									"name": "tsunami",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['sig']"
+								},
+								"sink": {
+									"name": "sig",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['net']"
+								},
+								"sink": {
+									"name": "net",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['nst']"
+								},
+								"sink": {
+									"name": "nst",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['dmin']"
+								},
+								"sink": {
+									"name": "dmin",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['rms']"
+								},
+								"sink": {
+									"name": "rms",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['gap']"
+								},
+								"sink": {
+									"name": "gap",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['properties']['magType']"
+								},
+								"sink": {
+									"name": "magType",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['geometry']['coordinates'][0]"
+								},
+								"sink": {
+									"name": "Longitude",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['geometry']['coordinates'][1]"
+								},
+								"sink": {
+									"name": "Latitude",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"path": "['geometry']['coordinates'][2]"
+								},
+								"sink": {
+									"name": "Depth",
+									"type": "String"
+								}
+							}
+						],
+						"collectionReference": "$['features']",
+						"mapComplexValuesToString": true
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "earthquake_source_Json",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "earthquake_silver",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2025-11-24T22:03:50Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

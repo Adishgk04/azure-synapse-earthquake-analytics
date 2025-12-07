@@ -1,0 +1,16 @@
+{
+	"name": "earthquake_source_rest",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "earthquake_source",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "RestResource",
+		"typeProperties": {
+			"relativeUrl": "earthquakes/feed/v1.0/summary/all_month.geojson"
+		},
+		"schema": []
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

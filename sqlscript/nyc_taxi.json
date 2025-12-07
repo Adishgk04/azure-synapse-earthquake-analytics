@@ -1,0 +1,20 @@
+{
+	"name": "nyc_taxi",
+	"properties": {
+		"folder": {
+			"name": "NYC project/nyc taxi"
+		},
+		"content": {
+			"query": "-- This is auto-generated code\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) AS [result]\n\n--ABFSS\n-- This is auto-generated code\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'abfss://newworld@azureprojstorage.dfs.core.windows.net/nyc_green_taxi_data/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) AS [result]\n\n\n\nEXEC sp_describe_first_result_set N'\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK ''abfss://newworld@azureprojstorage.dfs.core.windows.net/nyc_green_taxi_data/taxi_zone.csv'',\n        FORMAT = ''CSV'',\n        PARSER_VERSION = ''2.0'',\n        HEADER_ROW = TRUE\n    ) AS [result]'\n\n\n\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) AS [result]\n\n--ABFSS\n-- This is auto-generated code\n\nSELECT \n    MAX(LEN(LocationID)) AS LocationID,\n    MAX(LEN(Borough)) AS Borough,\n    MAX(LEN(Zone)) AS Zone,\n    MAX(LEN(service_zone)) AS service_zone\nFROM\n    OPENROWSET(\n        BULK 'abfss://newworld@azureprojstorage.dfs.core.windows.net/nyc_green_taxi_data/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) AS [result]\n\n\n\n    \n\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) \n    WITH(\n        LocationID BIGINT,\n         Borough varchar(30), \n         Zone varchar(60), \n         service_zone varchar(30)\n    )\n    AS [result]\n\n \n\n CREATE DATABASE NYC_TAXI;\n\n USE   NYC_TAXI;\n\n SELECT NAME, COLLATION_NAME FROM SYS.DATABASES\n \n\n\n CREATE EXTERNAL DATA SOURCE NYC\n WITH (\n    LOCATION = 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/taxi_zone.csv'\n )\n\nEXTERNAL DATA SOURCE NYC\n\n CREATE EXTERNAL DATA SOURCE NYC_BRONZE\n WITH (\n    LOCATION = 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/'\n )\n\nDROP EXTERNAL DATA SOURCE NYC\n\n\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'taxi_zone.csv',\n        DATA_SOURCE = 'NYC_BRONZE',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) \n    WITH(\n        LocationID BIGINT,\n         Borough varchar(30), \n         Zone varchar(60), \n         service_zone varchar(30)\n    )\n    AS [result]\n\n\n\n\n\n\n    \n\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'trip_type.tsv',\n        DATA_SOURCE = 'NYC_BRONZE',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        FIELDTERMINATOR = '\\t',\n        HEADER_ROW = TRUE\n    ) \n    AS trip_type\n\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "NYC_TAXI",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

@@ -1,0 +1,99 @@
+{
+	"name": "Earthquake 10 years",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Year",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@variables('year')",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"activities": [
+						{
+							"name": "Execute earthquake child",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "earthquake 10_year_child_pipeline",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"startDate": {
+										"value": "@concat(item(),'-01-01' )",
+										"type": "Expression"
+									},
+									"endDate": {
+										"value": "@concat(item(),'-12-31')",
+										"type": "Expression"
+									},
+									"QuakeYear": {
+										"value": "@item()",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Year",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "year",
+					"value": [
+						"2015",
+						"2016",
+						"2017",
+						"2018",
+						"2019",
+						"2020",
+						"2021",
+						"2022",
+						"2023",
+						"2024",
+						"2025"
+					]
+				}
+			}
+		],
+		"variables": {
+			"year": {
+				"type": "Array"
+			},
+			"offset": {
+				"type": "Integer"
+			},
+			"Page": {
+				"type": "Integer"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2025-11-22T10:15:46Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

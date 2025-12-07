@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 2",
+	"properties": {
+		"content": {
+			"query": "SELECT TOP (100) [magnitude]\n,[place]\n,[country]\n,[time]\n,[updated]\n,[felt]\n,[alert]\n,[status]\n,[tsunami]\n,[rms]\n,[magType]\n,[fetature]\n,[latitude]\n FROM [dbo].[EarthquakeData]\n\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "Earthquake",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

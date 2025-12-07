@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 3",
+	"properties": {
+		"content": {
+			"query": "\n\nselect count(*),min(event_time), max(event_time) \nfrom(\nSELECT\n    -- Extract specific fields from the JSON \n    distinct id,\n    magnitude,\n    place,\n    time_unix,\n    -- Convert UNIX timestamp (ms) to readable Date\n    DATEADD(second, time_unix / 1000, '1970-01-01') as event_time,\n    longitude,\n    latitude,\n    depth\nFROM OPENROWSET(\n    -- 1. Point to your file\n    BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/Earthquake/bronze/*.json',\n    -- 2. Treat the file as a \"Text\" file with no delimiters (reads the whole file into one row)\n    FORMAT = 'CSV',\n    FIELDQUOTE = '0x0b',\n    FIELDTERMINATOR ='0x0b',\n    ROWTERMINATOR = '0x0b'\n) WITH (jsonContent varchar(MAX)) AS [result]\n-- 3. \"Explode\" the JSON array. USGS keeps data inside 'features'\nCROSS APPLY OPENJSON(jsonContent, '$.features')\nWITH (\n    -- Map the JSON properties to SQL columns\n    id          VARCHAR(100)    '$.id',\n    magnitude   FLOAT           '$.properties.mag',\n    place       VARCHAR(255)    '$.properties.place',\n    time_unix   BIGINT          '$.properties.time',\n    longitude   FLOAT           '$.geometry.coordinates[0]',\n    latitude    FLOAT           '$.geometry.coordinates[1]',\n    depth       FLOAT           '$.geometry.coordinates[2]'\n)\n) as rows",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "master",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

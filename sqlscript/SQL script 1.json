@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 1",
+	"properties": {
+		"content": {
+			"query": "-- This is auto-generated code\nuse earthquake; \n\nDROP EXTERNAL FILE FORMAT MyCsvFormat;\nDROP EXTERNAL DATA SOURCE myData;\nDROP EXTERNAL TABLE dbo.EarthquakeData;\n\nCREATE EXTERNAL FILE FORMAT MyCsvFormat\nWITH (\n    FORMAT_TYPE = DELIMITEDTEXT,\n    FORMAT_OPTIONS (\n        FIELD_TERMINATOR = ',',\n        STRING_DELIMITER = '\"',\n        FIRST_ROW = 2\n    )\n);\n\nCREATE EXTERNAL DATA SOURCE myData\nWITH (\n    LOCATION ='https://azureprojstorage.dfs.core.windows.net/newworld/',\n    CREDENTIAL = secretkey\n);\n\n \nCREATE EXTERNAL TABLE dbo.EarthquakeData (\n\n    magnitude FLOAT,\n    place VARCHAR(200) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    country VARCHAR(100) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    time  BIGINT,\n    updated  BIGINT,\n    felt VARCHAR(10) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    alert VARCHAR(10) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    status VARCHAR(10) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    tsunami VARCHAR(20) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    rms FLOAT,\n    magType VARCHAR(10) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    fetature VARCHAR(200) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    latitude VARCHAR(200) COLLATE Latin1_General_100_CI_AI_SC_UTF8, \n    -- Add other columns here\n)\nWITH (\n    LOCATION = 'Earthquake/silver/earthquake_silver.csv',  -- Path inside the container\n    DATA_SOURCE = myData,\n    FILE_FORMAT = MyCsvFormat\n);\n\n\n\n\n-- This is auto-generated code\nSELECT\n    top 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/Earthquake/silver/earthquake_silver.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW=TRUE\n    ) AS [result]\n    \n\n\n    \n\n-- This is auto-generated code\nSELECT count(*), max(time/1000), min (time/1000)\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/Earthquake/silver/earthquake_silver.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW=TRUE\n    ) AS [result]\n\n\n\n\n\n\n \n\n\n SELECT TOP 10 *\nFROM OPENROWSET(\n    BULK 'silver/earthquake_silver.csv',\n    DATA_SOURCE = myData,\n    FORMAT = 'CSV',\n    PARSER_VERSION = '2.0'\n) AS rows;\n\nSELECT TOP 1 *\nFROM OPENROWSET(\n    BULK 'Earthquake/silver/earthquake_silver.csv',\n    DATA_SOURCE = [myData],\n    FORMAT = 'CSV',\n    PARSER_VERSION = '2.0'\n)   AS [result];\n\n\n\n\n\n\n\nSELECT TOP 1 *\nFROM OPENROWSET(\n    BULK 'Earthquake/silver/earth.csv',\n    DATA_SOURCE = [myData],\n    FORMAT = 'CSV',\n    PARSER_VERSION = '2.0'\n)   AS [result];\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "Earthquake",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

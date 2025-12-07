@@ -1,0 +1,17 @@
+{
+	"name": "earthquake external_table",
+	"properties": {
+		"content": {
+			"query": "IF NOT EXISTS (SELECT * FROM sys.external_file_formats WHERE name = 'SynapseDelimitedTextFormat') \n\tCREATE EXTERNAL FILE FORMAT [SynapseDelimitedTextFormats] \n\tWITH ( FORMAT_TYPE = DELIMITEDTEXT ,\n\t       FORMAT_OPTIONS (\n\t\t\t FIELD_TERMINATOR = ',',\n    \t    STRING_DELIMITER = '\"',\n\t\t\t USE_TYPE_DEFAULT = FALSE\n\t\t\t))\nGO\n\n \n\nIF NOT EXISTS (SELECT * FROM sys.external_data_sources WHERE name = 'newworld_azureprojstorage_dfs_core_windows_net') \n\tCREATE EXTERNAL DATA SOURCE [newworld_azureprojstorage_dfs_core_windows_net] \n\tWITH (\n\t\tLOCATION = 'abfss://newworld@azureprojstorage.dfs.core.windows.net' \n\t)\nGO\n\ndrop EXTERNAL TABLE dbo.earthquake_stg\n\n\n\nCREATE EXTERNAL TABLE dbo.earthquake_stg (\n\tMAG nvarchar(50),\n\tPLACE nvarchar(300),\n\tTIME nvarchar(50),\n\tUPDATED nvarchar(50),\n\tDETAILS nvarchar(300),\n\tFELT nvarchar(50),\n\tCDI nvarchar(50),\n\tMMI nvarchar(50),\n\tALERT nvarchar(50),\n\tSTATUS nvarchar(50),\n\tTSUNAMI nvarchar(50),\n\tSIG nvarchar(50),\n\tNET nvarchar(50),\n\tNST nvarchar(50),\n\tDMIN nvarchar(50),\n\tRMS nvarchar(50),\n\tGAP nvarchar(50),\n\tMAGTYPE nvarchar(50),\n\tLONGITUDE nvarchar(50),\n\tLATITUDE nvarchar(50),\n\tDEPTH nvarchar(50)\n\t)\n\tWITH (\n\tLOCATION = 'Earthquake/silver/earthquake_silver.csv',\n\tDATA_SOURCE = [newworld_azureprojstorage_dfs_core_windows_net],\n\tFILE_FORMAT = [SynapseDelimitedTextFormats] \n\t)\n\t\nGO\n\n\n\nSELECT TOP 100 * FROM dbo.earthquake_stg\n\tWHERE place<>'place'\nGO\n\n\nSELECT TOP 100 \n    max(DATEADD(second, TRY_CAST(TIME AS BIGINT) / 1000, '1970-01-01')) as event_time,\n    min(DATEADD(second, TRY_CAST(TIME AS BIGINT) / 1000, '1970-01-01')) as event_time  FROM dbo.earthquake_stg\n\tWHERE PLACE<>'PLACE'\nGO\n\n \n \n\n select top 5 * from dbo.earthquake_stg\n where felt is not NULL or alert is not null\n\n\n\n \n select ALERT from dbo.earthquake_stg\n group by ALERT\n\n \n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "Earthquake",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

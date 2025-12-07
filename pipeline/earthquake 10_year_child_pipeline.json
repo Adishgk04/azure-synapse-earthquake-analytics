@@ -1,0 +1,386 @@
+{
+	"name": "earthquake 10_year_child_pipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "Until1",
+				"type": "Until",
+				"dependsOn": [
+					{
+						"activity": "Loop",
+						"dependencyConditions": [
+							"Completed"
+						]
+					},
+					{
+						"activity": "Page",
+						"dependencyConditions": [
+							"Completed"
+						]
+					},
+					{
+						"activity": "offset",
+						"dependencyConditions": [
+							"Completed"
+						]
+					},
+					{
+						"activity": "PageOffset",
+						"dependencyConditions": [
+							"Completed"
+						]
+					},
+					{
+						"activity": "earthquakeCount_variable",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(variables('continueLoop'),false)",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "CopyEarthquake",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "earthquakeCountLookUpdate",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [
+								{
+									"name": "Source",
+									"value": "@{concat(\n  '?format=geojson',\n  '&starttime=', pipeline().parameters.startDate,\n  '&endtime=', pipeline().parameters.endDate,\n  '&orderby=time',\n  '&limit=', '<PageLimit>',\n  '&offset=', '<PageOffset>'\n)}"
+								},
+								{
+									"name": "Destination",
+									"value": "newworld/Earthquake/bronze/@{concat('earthquake_',string(variables('PageOffset')),'.json')}"
+								}
+							],
+							"typeProperties": {
+								"source": {
+									"type": "RestSource",
+									"httpRequestTimeout": "00:01:40",
+									"requestInterval": "00.00:00:00.010",
+									"requestMethod": "GET"
+								},
+								"sink": {
+									"type": "JsonSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings",
+										"copyBehavior": "MergeFiles"
+									},
+									"formatSettings": {
+										"type": "JsonWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "earthquake5years",
+									"type": "DatasetReference",
+									"parameters": {
+										"PageLimit": {
+											"value": "@variables('PageLimit')",
+											"type": "Expression"
+										},
+										"PageOff": {
+											"value": "@variables('PageOffset')",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "earthquake_years_sink",
+									"type": "DatasetReference",
+									"parameters": {
+										"fileName": {
+											"value": "@concat('Earthquake_',pipeline().parameters.QuakeYear,'_',variables('PageOffset'),'.json')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "If Condition1",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "CopyEarthquake",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@less(variables('outputvalue'),0)",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "Set variable1",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "Set variable3",
+												"dependencyConditions": [
+													"Completed"
+												]
+											}
+										],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "PageOffset",
+											"value": {
+												"value": "@variables('PageOffset2')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Set variable3",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "PageOffset2",
+											"value": {
+												"value": "@add(variables('PageOffset'),variables('PageLimit'))",
+												"type": "Expression"
+											}
+										}
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "Set variable2",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "continueLoop",
+											"value": false
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "earthquakeCountUpdate",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "outputvalue",
+								"value": {
+									"value": "@sub(variables('earthquakeCount'),variables('PageLimit') )",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "earthquakeCountLookUpdate",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "earthquakeCountUpdate",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "earthquakeCount",
+								"value": {
+									"value": "@variables('outputvalue')",
+									"type": "Expression"
+								}
+							}
+						}
+					],
+					"timeout": "0.12:00:00"
+				}
+			},
+			{
+				"name": "Page",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "PageLimit",
+					"value": 19999
+				}
+			},
+			{
+				"name": "Loop",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "continueLoop",
+					"value": true
+				}
+			},
+			{
+				"name": "offset",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "PageOffset",
+					"value": 1
+				}
+			},
+			{
+				"name": "PageOffset",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "PageOffset2",
+					"value": 1
+				}
+			},
+			{
+				"name": "earthquakeCount",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": {
+						"value": "@concat(\n  'https://earthquake.usgs.gov/fdsnws/event/1/count?',\n  '&starttime=', pipeline().parameters.startDate,\n  '&endtime=', pipeline().parameters.endDate,\n  '&orderby=time'\n)",
+						"type": "Expression"
+					},
+					"connectVia": {
+						"referenceName": "AutoResolveIntegrationRuntime",
+						"type": "IntegrationRuntimeReference"
+					}
+				}
+			},
+			{
+				"name": "earthquakeCount_variable",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "earthquakeCount",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "earthquakeCount",
+					"value": {
+						"value": "@int(activity('earthquakeCount').output.Response)",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"startDate": {
+				"type": "string"
+			},
+			"endDate": {
+				"type": "string"
+			},
+			"QuakeYear": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"continueLoop": {
+				"type": "Boolean"
+			},
+			"PageOffset": {
+				"type": "Integer"
+			},
+			"PageLimit": {
+				"type": "Integer"
+			},
+			"PageOffset2": {
+				"type": "Integer"
+			},
+			"outputvalue": {
+				"type": "Integer"
+			},
+			"earthquakeCount": {
+				"type": "Integer"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2025-11-22T10:15:31Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

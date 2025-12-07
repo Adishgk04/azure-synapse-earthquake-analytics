@@ -1,0 +1,25 @@
+{
+	"name": "earthquake_silver",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "syanpsesqladminuser-WorkspaceDefaultStorage",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "earthquake_silver.csv",
+				"folderPath": "Earthquake/silver",
+				"fileSystem": "newworld"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

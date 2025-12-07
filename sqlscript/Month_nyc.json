@@ -1,0 +1,17 @@
+{
+	"name": "Month_nyc",
+	"properties": {
+		"content": {
+			"query": "-- This is auto-generated code\nSELECT\n    top 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/trip_data_green_csv/year=2020/**',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW=TRUE\n    ) AS [result]\n\n\n\n\n\n-- This is auto-generated code\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK ('https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/trip_data_green_csv/year=2020/month=04/*',\n        'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/trip_data_green_csv/year=2020/month=02/*'),\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW=TRUE\n    ) AS [result]\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "master",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}
