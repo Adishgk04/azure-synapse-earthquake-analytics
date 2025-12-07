@@ -1,0 +1,1636 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"type": "string",
+			"metadata": "Workspace name",
+			"defaultValue": "syanpsesqladminuser"
+		},
+		"AzureDataLakeStorage_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'AzureDataLakeStorage'"
+		},
+		"syanpsesqladminuser-WorkspaceDefaultSqlServer_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'syanpsesqladminuser-WorkspaceDefaultSqlServer'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:syanpsesqladminuser.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"AzureDataLakeStorage_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://azureprojstorage.dfs.core.windows.net/"
+		},
+		"earthquake_source_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://earthquake.usgs.gov/fdsnws/event/1/"
+		},
+		"public_holiday_sasUri": {
+			"type": "secureString",
+			"metadata": "Secure string for 'sasUri' of 'public_holiday'"
+		},
+		"syanpsesqladminuser-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://azureprojstorage.dfs.core.windows.net"
+		}
+	},
+	"variables": {
+		"workspaceId": "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('workspaceName'), '/Earthquake 10 years')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "This is the parent pipeline which runs a child pipeline to copy 10 years of earthquake data.",
+				"activities": [
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Year",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('year')",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"activities": [
+								{
+									"name": "Execute earthquake child",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "earthquake 10_year_child_pipeline",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"startDate": {
+												"value": "@concat(item(),'-01-01' )",
+												"type": "Expression"
+											},
+											"endDate": {
+												"value": "@concat(item(),'-12-31')",
+												"type": "Expression"
+											},
+											"QuakeYear": {
+												"value": "@item()",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Year",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "year",
+							"value": [
+								"2015",
+								"2016",
+								"2017",
+								"2018",
+								"2019",
+								"2020",
+								"2021",
+								"2022",
+								"2023",
+								"2024",
+								"2025"
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"year": {
+						"type": "Array"
+					},
+					"offset": {
+						"type": "Integer"
+					},
+					"Page": {
+						"type": "Integer"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-11-22T10:15:46Z"
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/pipelines/earthquake 10_year_child_pipeline')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Earthquake data')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "This pipeline pulls the data using Rest API and creates a JSON data.",
+				"activities": [
+					{
+						"name": "Copy earthquake data",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "earthquake_source_rest",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "earthquake_sink",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-11-15T23:08:58Z"
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/earthquake_source_rest')]",
+				"[concat(variables('workspaceId'), '/datasets/earthquake_sink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/earthquake 10_year_child_pipeline')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "This is a child pipeline which copies 10 years worth of data.",
+				"activities": [
+					{
+						"name": "Until1",
+						"type": "Until",
+						"dependsOn": [
+							{
+								"activity": "Loop",
+								"dependencyConditions": [
+									"Completed"
+								]
+							},
+							{
+								"activity": "Page",
+								"dependencyConditions": [
+									"Completed"
+								]
+							},
+							{
+								"activity": "offset",
+								"dependencyConditions": [
+									"Completed"
+								]
+							},
+							{
+								"activity": "PageOffset",
+								"dependencyConditions": [
+									"Completed"
+								]
+							},
+							{
+								"activity": "earthquakeCount_variable",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(variables('continueLoop'),false)",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "CopyEarthquake",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "earthquakeCountLookUpdate",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [
+										{
+											"name": "Source",
+											"value": "@{concat(\n  '?format=geojson',\n  '&starttime=', pipeline().parameters.startDate,\n  '&endtime=', pipeline().parameters.endDate,\n  '&orderby=time',\n  '&limit=', '<PageLimit>',\n  '&offset=', '<PageOffset>'\n)}"
+										},
+										{
+											"name": "Destination",
+											"value": "newworld/Earthquake/bronze/@{concat('earthquake_',string(variables('PageOffset')),'.json')}"
+										}
+									],
+									"typeProperties": {
+										"source": {
+											"type": "RestSource",
+											"httpRequestTimeout": "00:01:40",
+											"requestInterval": "00.00:00:00.010",
+											"requestMethod": "GET"
+										},
+										"sink": {
+											"type": "JsonSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings",
+												"copyBehavior": "MergeFiles"
+											},
+											"formatSettings": {
+												"type": "JsonWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "earthquake5years",
+											"type": "DatasetReference",
+											"parameters": {
+												"PageLimit": {
+													"value": "@variables('PageLimit')",
+													"type": "Expression"
+												},
+												"PageOff": {
+													"value": "@variables('PageOffset')",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "earthquake_years_sink",
+											"type": "DatasetReference",
+											"parameters": {
+												"fileName": {
+													"value": "@concat('Earthquake_',pipeline().parameters.QuakeYear,'_',variables('PageOffset'),'.json')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "If Condition1",
+									"type": "IfCondition",
+									"dependsOn": [
+										{
+											"activity": "CopyEarthquake",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@less(variables('outputvalue'),0)",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "Set variable1",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "Set variable3",
+														"dependencyConditions": [
+															"Completed"
+														]
+													}
+												],
+												"policy": {
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "PageOffset",
+													"value": {
+														"value": "@variables('PageOffset2')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "Set variable3",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"policy": {
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "PageOffset2",
+													"value": {
+														"value": "@add(variables('PageOffset'),variables('PageLimit'))",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "Set variable2",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"policy": {
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "continueLoop",
+													"value": false
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "earthquakeCountUpdate",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "outputvalue",
+										"value": {
+											"value": "@sub(variables('earthquakeCount'),variables('PageLimit') )",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "earthquakeCountLookUpdate",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "earthquakeCountUpdate",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "earthquakeCount",
+										"value": {
+											"value": "@variables('outputvalue')",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"timeout": "0.12:00:00"
+						}
+					},
+					{
+						"name": "Page",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "PageLimit",
+							"value": 19999
+						}
+					},
+					{
+						"name": "Loop",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "continueLoop",
+							"value": true
+						}
+					},
+					{
+						"name": "offset",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "PageOffset",
+							"value": 1
+						}
+					},
+					{
+						"name": "PageOffset",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "PageOffset2",
+							"value": 1
+						}
+					},
+					{
+						"name": "earthquakeCount",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {},
+							"url": {
+								"value": "@concat(\n  'https://earthquake.usgs.gov/fdsnws/event/1/count?',\n  '&starttime=', pipeline().parameters.startDate,\n  '&endtime=', pipeline().parameters.endDate,\n  '&orderby=time'\n)",
+								"type": "Expression"
+							},
+							"connectVia": {
+								"referenceName": "AutoResolveIntegrationRuntime",
+								"type": "IntegrationRuntimeReference"
+							}
+						}
+					},
+					{
+						"name": "earthquakeCount_variable",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "earthquakeCount",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "earthquakeCount",
+							"value": {
+								"value": "@int(activity('earthquakeCount').output.Response)",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"startDate": {
+						"type": "string"
+					},
+					"endDate": {
+						"type": "string"
+					},
+					"QuakeYear": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"continueLoop": {
+						"type": "Boolean"
+					},
+					"PageOffset": {
+						"type": "Integer"
+					},
+					"PageLimit": {
+						"type": "Integer"
+					},
+					"PageOffset2": {
+						"type": "Integer"
+					},
+					"outputvalue": {
+						"type": "Integer"
+					},
+					"earthquakeCount": {
+						"type": "Integer"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-11-22T10:15:31Z"
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]",
+				"[concat(variables('workspaceId'), '/datasets/earthquake5years')]",
+				"[concat(variables('workspaceId'), '/datasets/earthquake_years_sink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/earthquake_silver')]",
+			"type": "Microsoft.Synapse/workspaces/pipelines",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"description": "This pipeline transforms the raw json data to readable csv file.",
+				"activities": [
+					{
+						"name": "earthquake",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"wildcardFolderPath": "Earthquake/bronze",
+									"wildcardFileName": "*.json",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings",
+									"copyBehavior": "MergeFiles"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"path": "['properties']['mag']"
+										},
+										"sink": {
+											"name": "mag",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['place']"
+										},
+										"sink": {
+											"name": "place",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['time']"
+										},
+										"sink": {
+											"name": "time",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['updated']"
+										},
+										"sink": {
+											"name": "updated",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['detail']"
+										},
+										"sink": {
+											"name": "detail",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['felt']"
+										},
+										"sink": {
+											"name": "felt",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['cdi']"
+										},
+										"sink": {
+											"name": "cdi",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['mmi']"
+										},
+										"sink": {
+											"name": "mmi",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['alert']"
+										},
+										"sink": {
+											"name": "alert",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['status']"
+										},
+										"sink": {
+											"name": "status",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['tsunami']"
+										},
+										"sink": {
+											"name": "tsunami",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['sig']"
+										},
+										"sink": {
+											"name": "sig",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['net']"
+										},
+										"sink": {
+											"name": "net",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['nst']"
+										},
+										"sink": {
+											"name": "nst",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['dmin']"
+										},
+										"sink": {
+											"name": "dmin",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['rms']"
+										},
+										"sink": {
+											"name": "rms",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['gap']"
+										},
+										"sink": {
+											"name": "gap",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['properties']['magType']"
+										},
+										"sink": {
+											"name": "magType",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['geometry']['coordinates'][0]"
+										},
+										"sink": {
+											"name": "Longitude",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['geometry']['coordinates'][1]"
+										},
+										"sink": {
+											"name": "Latitude",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"path": "['geometry']['coordinates'][2]"
+										},
+										"sink": {
+											"name": "Depth",
+											"type": "String"
+										}
+									}
+								],
+								"collectionReference": "$['features']",
+								"mapComplexValuesToString": true
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "earthquake_source_Json",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "earthquake_silver",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": [],
+				"lastPublishTime": "2025-11-24T22:03:50Z"
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/datasets/earthquake_source_Json')]",
+				"[concat(variables('workspaceId'), '/datasets/earthquake_silver')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/earthquake5years')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "earthquake_source",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"PageLimit": {
+						"type": "string",
+						"defaultValue": "20000"
+					},
+					"PageOff": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": {
+						"value": "@concat( 'query?format=geojson','&starttime=', pipeline().parameters.startDate,'&endtime=', pipeline().parameters.endDate,'&orderby=time','&limit=', dataset().PageLimit,'&offset=', dataset().PageOff)",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/earthquake_source')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/earthquake_silver')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "syanpsesqladminuser-WorkspaceDefaultStorage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "earthquake_silver.csv",
+						"folderPath": "Earthquake/silver",
+						"fileSystem": "newworld"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/syanpsesqladminuser-WorkspaceDefaultStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/earthquake_sink')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "syanpsesqladminuser-WorkspaceDefaultStorage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "Earthquake.json",
+						"folderPath": "Earthquake/bronze",
+						"fileSystem": "newworld"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string"
+						},
+						"metadata": {
+							"type": "object",
+							"properties": {
+								"generated": {
+									"type": "integer"
+								},
+								"url": {
+									"type": "string"
+								},
+								"title": {
+									"type": "string"
+								},
+								"status": {
+									"type": "integer"
+								},
+								"api": {
+									"type": "string"
+								},
+								"count": {
+									"type": "integer"
+								}
+							}
+						},
+						"features": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"type": {
+										"type": "string"
+									},
+									"properties": {
+										"type": "object",
+										"properties": {
+											"mag": {
+												"type": "number"
+											},
+											"place": {
+												"type": "string"
+											},
+											"time": {
+												"type": "integer"
+											},
+											"updated": {
+												"type": "integer"
+											},
+											"tz": {
+												"type": "null"
+											},
+											"url": {
+												"type": "string"
+											},
+											"detail": {
+												"type": "string"
+											},
+											"felt": {
+												"type": "null"
+											},
+											"cdi": {
+												"type": "null"
+											},
+											"mmi": {
+												"type": "null"
+											},
+											"alert": {
+												"type": "null"
+											},
+											"status": {
+												"type": "string"
+											},
+											"tsunami": {
+												"type": "integer"
+											},
+											"sig": {
+												"type": "integer"
+											},
+											"net": {
+												"type": "string"
+											},
+											"code": {
+												"type": "string"
+											},
+											"ids": {
+												"type": "string"
+											},
+											"sources": {
+												"type": "string"
+											},
+											"types": {
+												"type": "string"
+											},
+											"nst": {
+												"type": "integer"
+											},
+											"dmin": {
+												"type": "number"
+											},
+											"rms": {
+												"type": "number"
+											},
+											"gap": {
+												"type": "integer"
+											},
+											"magType": {
+												"type": "string"
+											},
+											"type": {
+												"type": "string"
+											},
+											"title": {
+												"type": "string"
+											}
+										}
+									},
+									"geometry": {
+										"type": "object",
+										"properties": {
+											"type": {
+												"type": "string"
+											},
+											"coordinates": {
+												"type": "array",
+												"items": {
+													"type": "number"
+												}
+											}
+										}
+									},
+									"id": {
+										"type": "string"
+									}
+								}
+							}
+						},
+						"bbox": {
+							"type": "array",
+							"items": {
+								"type": "number"
+							}
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/syanpsesqladminuser-WorkspaceDefaultStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/earthquake_source_Json')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "syanpsesqladminuser-WorkspaceDefaultStorage",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "Earthquake/bronze",
+						"fileSystem": "newworld"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"type": {
+							"type": "string"
+						},
+						"metadata": {
+							"type": "object",
+							"properties": {
+								"generated": {
+									"type": "integer"
+								},
+								"url": {
+									"type": "string"
+								},
+								"title": {
+									"type": "string"
+								},
+								"status": {
+									"type": "integer"
+								},
+								"api": {
+									"type": "string"
+								},
+								"count": {
+									"type": "integer"
+								}
+							}
+						},
+						"features": {
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"type": {
+										"type": "string"
+									},
+									"properties": {
+										"type": "object",
+										"properties": {
+											"mag": {
+												"type": "number"
+											},
+											"place": {
+												"type": "string"
+											},
+											"time": {
+												"type": "integer"
+											},
+											"updated": {
+												"type": "integer"
+											},
+											"tz": {
+												"type": "null"
+											},
+											"url": {
+												"type": "string"
+											},
+											"detail": {
+												"type": "string"
+											},
+											"felt": {
+												"type": "null"
+											},
+											"cdi": {
+												"type": "null"
+											},
+											"mmi": {
+												"type": "null"
+											},
+											"alert": {
+												"type": "null"
+											},
+											"status": {
+												"type": "string"
+											},
+											"tsunami": {
+												"type": "integer"
+											},
+											"sig": {
+												"type": "integer"
+											},
+											"net": {
+												"type": "string"
+											},
+											"code": {
+												"type": "string"
+											},
+											"ids": {
+												"type": "string"
+											},
+											"sources": {
+												"type": "string"
+											},
+											"types": {
+												"type": "string"
+											},
+											"nst": {
+												"type": "integer"
+											},
+											"dmin": {
+												"type": "number"
+											},
+											"rms": {
+												"type": "number"
+											},
+											"gap": {
+												"type": "integer"
+											},
+											"magType": {
+												"type": "string"
+											},
+											"type": {
+												"type": "string"
+											},
+											"title": {
+												"type": "string"
+											}
+										}
+									},
+									"geometry": {
+										"type": "object",
+										"properties": {
+											"type": {
+												"type": "string"
+											},
+											"coordinates": {
+												"type": "array",
+												"items": {
+													"type": "number"
+												}
+											}
+										}
+									},
+									"id": {
+										"type": "string"
+									}
+								}
+							}
+						},
+						"bbox": {
+							"type": "array",
+							"items": {
+								"type": "number"
+							}
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/syanpsesqladminuser-WorkspaceDefaultStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/earthquake_source_rest')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "earthquake_source",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": "earthquakes/feed/v1.0/summary/all_month.geojson"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/earthquake_source')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/earthquake_years_sink')]",
+			"type": "Microsoft.Synapse/workspaces/datasets",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDataLakeStorage",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"fileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().fileName",
+							"type": "Expression"
+						},
+						"folderPath": "Earthquake/bronze",
+						"fileSystem": "newworld"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/linkedServices/AzureDataLakeStorage')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AzureDataLakeStorage')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('AzureDataLakeStorage_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('AzureDataLakeStorage_accountKey')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/earthquake_source')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "RestService",
+				"typeProperties": {
+					"url": "[parameters('earthquake_source_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": false,
+					"authenticationType": "Anonymous"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/public_holiday')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"sasUri": "[parameters('public_holiday_sasUri')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/syanpsesqladminuser-WorkspaceDefaultSqlServer')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"parameters": {
+					"DBName": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('syanpsesqladminuser-WorkspaceDefaultSqlServer_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/syanpsesqladminuser-WorkspaceDefaultStorage')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('syanpsesqladminuser-WorkspaceDefaultStorage_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AutoResolveIntegrationRuntime')]",
+			"type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 0
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/WorkspaceSystemIdentity')]",
+			"type": "Microsoft.Synapse/workspaces/credentials",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "ManagedIdentity",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Data Cleaning')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "\nSELECT TOP 100 * FROM dbo.earthquake_stg\nGO \n\n \nSELECT count(*) FROM dbo.earthquake_stg \n \n\n drop view silver.eartquake_data\n\n\n\nCREATE VIEW silver.eartquake_data AS\nSELECT CASE WHEN CHARINDEX(',',REVERSE(PLACE))>0 THEN RIGHT(PLACE,CHARINDEX(',',REVERSE(PLACE))-1) \n        ELSE RIGHT(PLACE,CHARINDEX(',',REVERSE(PLACE))) END AS EQ_PLACE,\n        LEFT(PLACE, LEN(PLACE)-CHARINDEX(',',REVERSE(PLACE))) AS LOCATION,\n        convert(date,dateadd(ms,CAST(time AS BIGINT),'1970-01-01'),103) as TIMES,\n        convert(date,dateadd(ms,CAST(updated AS BIGINT),'1970-01-01'),103) as UPDATED_TIME,\n        TRY_CAST(MAG AS FLOAT) AS MAG, \n        TRY_CAST(FELT AS FLOAT) AS FELT, \n        TRY_CAST(CDI AS FLOAT) AS CDI, \n        TRY_CAST(MMI AS FLOAT) AS MMI, \n\tALERT ,\n\tSTATUS ,\n        TRY_CAST(TSUNAMI AS INT) AS TSUNAMI, \n        TRY_CAST(SIG AS FLOAT) AS SIG, \n        TRY_CAST(NET AS FLOAT) AS NET,  \n        TRY_CAST(NST AS FLOAT) AS NST, \n        TRY_CAST(DMIN AS FLOAT) AS DMIN,  \n        TRY_CAST(RMS AS FLOAT) AS RMS, \n        TRY_CAST(GAP AS FLOAT) AS GAP, \n        TRY_CAST(LONGITUDE AS FLOAT) AS LONGITUDE,  \n        TRY_CAST(LATITUDE AS FLOAT) AS LATITUDE, \n        TRY_CAST(DEPTH AS FLOAT) AS DEPTH \nFROM dbo.earthquake_stg \nWHERE PLACE<>'PLACE' \n\n\n\nselect count(distinct eq_place) from silver.eartquake_data\nwhere felt>=500\n\n\n\n\n\nselect distinct alert from silver.eartquake_data\n\n\n\nselect count(case when alert='red' then 1 else null end) as Red,\ncount(case when alert='orange' then 1 else null end) as Orange,\ncount(case when alert='yellow' then 1 else null end) as Yellow,\ncount(case when alert='green' then 1 else null end) as Green,\ncount(case when alert is NULL then 1 else null end) as Unknown\nfrom silver.eartquake_data  \n\n\n--Time Period\nselect max(times),min(updated_time) \nFROM silver.eartquake_data\n\n\n\n\n\n\n\nselect top 5 DATENAME(month,TIMES),* from silver.eartquake_data\nwhere alert is not null\n\n\n--Time Period\nselect max(times),min(updated_time) \nFROM silver.eartquake_data\n\n\n-- Order by Earthquake count \nselect eq_place,count( eq_place) as eq_count from silver.eartquake_data\ngroup by eq_place\norder by eq_count desc\n\n\n-- Order by Earthquake count magnitude above 4\nselect eq_place,count( eq_place) as eq_count from silver.eartquake_data\nwhere mag>4.5\ngroup by eq_place\norder by eq_count desc \n\n\n\n\n\nCREATE VIEW silver.clean_eartquake_data AS\nSELECT  ISNULL(EQ_PLACE,'Unknown') as Region, ISNULL(LOCATION,'Unknown') as Location,TIMES,UPDATED_TIME,\n        TRY_CAST(MAG AS FLOAT) AS MAG, \n        TRY_CAST(FELT AS FLOAT) AS FELT, \n        TRY_CAST(CDI AS FLOAT) AS CDI, \n        TRY_CAST(MMI AS FLOAT) AS MMI, \n\tALERT ,\n\tSTATUS ,\n        TRY_CAST(TSUNAMI AS INT) AS TSUNAMI, \n        TRY_CAST(SIG AS FLOAT) AS SIG, \n        TRY_CAST(NET AS FLOAT) AS NET,  \n        TRY_CAST(NST AS FLOAT) AS NST, \n        TRY_CAST(DMIN AS FLOAT) AS DMIN,  \n        TRY_CAST(RMS AS FLOAT) AS RMS, \n        TRY_CAST(GAP AS FLOAT) AS GAP, \n        TRY_CAST(LONGITUDE AS FLOAT) AS LONGITUDE,  \n        TRY_CAST(LATITUDE AS FLOAT) AS LATITUDE, \n        TRY_CAST(DEPTH AS FLOAT) AS DEPTH \nFROM silver.eartquake_data\nWHERE mag is not null and LONGITUDE is not null and LATITUDE is not null and DEPTH is not null\n\n",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "Earthquake",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SQL script 1')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "-- This is auto-generated code\nuse earthquake; \n\nDROP EXTERNAL FILE FORMAT MyCsvFormat;\nDROP EXTERNAL DATA SOURCE myData;\nDROP EXTERNAL TABLE dbo.EarthquakeData;\n\nCREATE EXTERNAL FILE FORMAT MyCsvFormat\nWITH (\n    FORMAT_TYPE = DELIMITEDTEXT,\n    FORMAT_OPTIONS (\n        FIELD_TERMINATOR = ',',\n        STRING_DELIMITER = '\"',\n        FIRST_ROW = 2\n    )\n);\n\nCREATE EXTERNAL DATA SOURCE myData\nWITH (\n    LOCATION ='https://azureprojstorage.dfs.core.windows.net/newworld/',\n    CREDENTIAL = secretkey\n);\n\n \nCREATE EXTERNAL TABLE dbo.EarthquakeData (\n\n    magnitude FLOAT,\n    place VARCHAR(200) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    country VARCHAR(100) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    time  BIGINT,\n    updated  BIGINT,\n    felt VARCHAR(10) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    alert VARCHAR(10) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    status VARCHAR(10) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    tsunami VARCHAR(20) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    rms FLOAT,\n    magType VARCHAR(10) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    fetature VARCHAR(200) COLLATE Latin1_General_100_CI_AI_SC_UTF8,\n    latitude VARCHAR(200) COLLATE Latin1_General_100_CI_AI_SC_UTF8, \n    -- Add other columns here\n)\nWITH (\n    LOCATION = 'Earthquake/silver/earthquake_silver.csv',  -- Path inside the container\n    DATA_SOURCE = myData,\n    FILE_FORMAT = MyCsvFormat\n);\n\n\n\n\n-- This is auto-generated code\nSELECT\n    top 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/Earthquake/silver/earthquake_silver.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW=TRUE\n    ) AS [result]\n    \n\n\n    \n\n-- This is auto-generated code\nSELECT count(*), max(time/1000), min (time/1000)\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/Earthquake/silver/earthquake_silver.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW=TRUE\n    ) AS [result]\n\n\n\n\n\n\n \n\n\n SELECT TOP 10 *\nFROM OPENROWSET(\n    BULK 'silver/earthquake_silver.csv',\n    DATA_SOURCE = myData,\n    FORMAT = 'CSV',\n    PARSER_VERSION = '2.0'\n) AS rows;\n\nSELECT TOP 1 *\nFROM OPENROWSET(\n    BULK 'Earthquake/silver/earthquake_silver.csv',\n    DATA_SOURCE = [myData],\n    FORMAT = 'CSV',\n    PARSER_VERSION = '2.0'\n)   AS [result];\n\n\n\n\n\n\n\nSELECT TOP 1 *\nFROM OPENROWSET(\n    BULK 'Earthquake/silver/earth.csv',\n    DATA_SOURCE = [myData],\n    FORMAT = 'CSV',\n    PARSER_VERSION = '2.0'\n)   AS [result];\n",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "Earthquake",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SQL script 2')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "SELECT TOP (100) [magnitude]\n,[place]\n,[country]\n,[time]\n,[updated]\n,[felt]\n,[alert]\n,[status]\n,[tsunami]\n,[rms]\n,[magType]\n,[fetature]\n,[latitude]\n FROM [dbo].[EarthquakeData]\n\n",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "Earthquake",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/SQL script 3')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "\n\nselect count(*),min(event_time), max(event_time) \nfrom(\nSELECT\n    -- Extract specific fields from the JSON \n    distinct id,\n    magnitude,\n    place,\n    time_unix,\n    -- Convert UNIX timestamp (ms) to readable Date\n    DATEADD(second, time_unix / 1000, '1970-01-01') as event_time,\n    longitude,\n    latitude,\n    depth\nFROM OPENROWSET(\n    -- 1. Point to your file\n    BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/Earthquake/bronze/*.json',\n    -- 2. Treat the file as a \"Text\" file with no delimiters (reads the whole file into one row)\n    FORMAT = 'CSV',\n    FIELDQUOTE = '0x0b',\n    FIELDTERMINATOR ='0x0b',\n    ROWTERMINATOR = '0x0b'\n) WITH (jsonContent varchar(MAX)) AS [result]\n-- 3. \"Explode\" the JSON array. USGS keeps data inside 'features'\nCROSS APPLY OPENJSON(jsonContent, '$.features')\nWITH (\n    -- Map the JSON properties to SQL columns\n    id          VARCHAR(100)    '$.id',\n    magnitude   FLOAT           '$.properties.mag',\n    place       VARCHAR(255)    '$.properties.place',\n    time_unix   BIGINT          '$.properties.time',\n    longitude   FLOAT           '$.geometry.coordinates[0]',\n    latitude    FLOAT           '$.geometry.coordinates[1]',\n    depth       FLOAT           '$.geometry.coordinates[2]'\n)\n) as rows",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "master",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/data transformation')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "CREATE SCHEMA GOLD;\n\ndrop view gold.yearly_eq_summary\ndrop view gold.yearly_eq_bucket\ndrop view gold.yearly_eq_summary\ndrop view gold.yearly_eq_summary\n\nCREATE VIEW gold.yearly_eq_summary AS\nselect DATEPART(YEAR,Times) as YEAR, count(*) as Total_earthquake,\ncount(case when mag>6.5 then 1 else null end) as Major_earthquake,\ncount(case when mag>0 and mag<=6.5 then 1 else null end) as Minor_earthquake, \ncount(case when tsunami=1 then 1 else null end ) as Tsuanmi_count,\ncount(case when tsunami=1 and mag>6 then 1 else null end ) as [Earthquake and Tsuanmi_count] \nfrom silver.clean_eartquake_data\ngroup by DATEPART(YEAR,Times) \n\n \n\nCREATE VIEW gold.monthly_eq_summary AS\nselect \nDATEPART(YEAR,Times) as YEAR, count(*) as Yearly_earthquake,DATENAME(MONTH,Times) as MONTH, count(*) as Monthly_earthquake,\ncount(case when mag>6 then 1 else null end) as Major_earthquake,\ncount(case when mag>0 and mag<=6 then 1 else null end) as Minor_earthquake, \ncount(case when tsunami=1 then 1 else null end ) as Tsuanmi_count,\ncount(case when tsunami=1 and mag>6 then 1 else null end ) as [Earthquake and Tsuanmi_count],\nSUM(CASE WHEN DEPTH < 70 THEN 1 else 0 END) AS shallow_quakes,\nSUM(CASE WHEN DEPTH BETWEEN 70 AND 300 THEN 1 else 0 END) AS intermediate_quakes,\nSUM(CASE WHEN DEPTH > 300 THEN 1 else 0 END) AS deep_quakes,\nconvert( decimal(10,2),AVG(DEPTH)) AS Avg_depth,\nconvert( decimal(10,2),AVG(SIG)) AS Avg_significance\nfrom silver.clean_eartquake_data\ngroup by DATENAME(MONTH,Times),DATEPART(YEAR,Times)\n\n \n\n\nCREATE VIEW gold.Daily_eq_summary AS\nselect TIMES,\ncount(case when mag>5 then 1 else null end) as Major_earthquake,\ncount(case when mag>0 and mag<=5 then 1 else null end) as Minor_earthquake, \ncount(case when tsunami=1 then 1 else null end ) as Tsuanmi_count,\nSUM(CASE WHEN DEPTH < 70 THEN 1 else 0 END) AS shallow_quakes,\nSUM(CASE WHEN DEPTH BETWEEN 70 AND 300 THEN 1 else 0 END) AS intermediate_quakes,\nSUM(CASE WHEN DEPTH > 300 THEN 1 else 0 END) AS deep_quakes,\nconvert( decimal(10,2),AVG(DEPTH)) AS Avg_depth,\nconvert( decimal(10,2),AVG(SIG)) AS Avg_significance,\ncount(case when tsunami=1 and mag>6 then 1 else null end ) as [Earthquake and Tsuanmi_count] \nfrom silver.clean_eartquake_data\ngroup by TIMES\n\n\n\nCREATE VIEW gold.gold_magnitude_categories AS\nSELECT\n    CASE \n        WHEN MAG < 4 THEN 'Minor'\n        WHEN MAG BETWEEN 4 AND 4.9 THEN 'Light'\n        WHEN MAG BETWEEN 5 AND 5.9 THEN 'Moderate'\n        WHEN MAG BETWEEN 6 AND 6.9 THEN 'Strong'\n        WHEN MAG >= 7 THEN 'Major'\n    END AS magnitude_category,\n    COUNT(*) AS total_events,\n    AVG(SIG) AS avg_significance\nFROM silver.clean_eartquake_data\nWHERE MAG IS NOT NULL\nGROUP BY CASE \n        WHEN MAG < 4 THEN 'Minor'\n        WHEN MAG BETWEEN 4 AND 4.9 THEN 'Light'\n        WHEN MAG BETWEEN 5 AND 5.9 THEN 'Moderate'\n        WHEN MAG BETWEEN 6 AND 6.9 THEN 'Strong'\n        WHEN MAG >= 7 THEN 'Major'\n    END;\n  \n\n\nCREATE VIEW GOLD.yearly_alert AS\nSELECT DATEPART(year,times) as year, \nCOUNT(CASE when alert='green' then 1 else null end) as green_alert,\nCOUNT(CASE when alert='yellow' then 1 else null end) as yellow_alert,\nCOUNT(CASE when alert='orange' then 1 else null end) as orange_alert,\nCOUNT(CASE when alert='red' then 1 else null end) as red_alert,\nCOUNT(CASE when alert is NULL then 1 else null end) as [unidentified]\nfrom silver.clean_eartquake_data\ngroup by DATEPART(year,times)\n\n\n\n\nCREATE VIEW gold.eq_region_summary AS\nselect region, count(mag) as magnitude_count, AVG(mag) as Average_magnitude,max(mag) as Maxium_magnitude,min(mag) as Minimum_magnitude,\nCOUNT(CASE when alert='green' then 1 else null end) as green_alert,\nCOUNT(CASE when alert='yellow' then 1 else null end) as yellow_alert,\nCOUNT(CASE when alert='orange' then 1 else null end) as orange_alert,\nCOUNT(CASE when alert='red' then 1 else null end) as red_alert\nfrom silver.clean_eartquake_data\nwhere felt>=500\nand mag>6\ngroup by region\norder by Maxium_magnitude DESC\n\n\n\n\n\nCREATE VIEW gold.eq_region_eq_summary AS\nselect Region,\ncount(case when mag>5 then 1 else null end) as Major_earthquake,\ncount(case when mag>0 and mag<=5 then 1 else null end) as Minor_earthquake, \ncount(case when tsunami=1 then 1 else null end ) as Tsuanmi_count,\nSUM(CASE WHEN DEPTH < 70 THEN 1 else 0 END) AS shallow_quakes,\nSUM(CASE WHEN DEPTH BETWEEN 70 AND 300 THEN 1 else 0 END) AS intermediate_quakes,\nSUM(CASE WHEN DEPTH > 300 THEN 1 else 0 END) AS deep_quakes,\nmax(mag) AS Maxium_magnitude,\nmin(mag) AS Minimum_magnitude,\nconvert( decimal(10,2),AVG(DEPTH)) AS Avg_depth,\nconvert( decimal(10,2),AVG(SIG)) AS Avg_significance,\nsum(felt) as Total_felt,\navg(felt) as Avg_felt\nfrom silver.clean_eartquake_data\ngroup by region  \norder by Avg_significance desc\n\n\n\nCREATE VIEW gold.gold_high_impact_regions AS\nSELECT\n    COALESCE(region, 'Unknown Region') AS region_name,\n\n    -- Count major or significant events\n    SUM(\n        CASE WHEN \n            MAG >= 6 \n            OR SIG >= 600\n            OR (MAG >= 5 AND DEPTH < 20)\n            OR TSUNAMI = 1\n        THEN 1 ELSE 0 END\n    ) AS high_impact_quake_count,\n\n    -- Important descriptive metrics\n    AVG(SIG) AS avg_significance,\n    MAX(SIG) AS max_significance,\n\n    -- Shallow strong events (biggest shaking)\n    SUM(CASE WHEN MAG >= 5 AND DEPTH < 70 THEN 1 ELSE 0 END) AS shallow_strong_quakes,\n\n    -- Tsunami-generating events\n    SUM(CASE WHEN TSUNAMI = 1 THEN 1 ELSE 0 END) AS tsunami_events,\n\n    -- Magnitude distribution\n    MAX(MAG) AS maximum_magnitude,\n    AVG(MAG) AS avg_magnitude,\n\n    -- Depth distribution\n    AVG(DEPTH) AS avg_depth\nFROM silver.clean_eartquake_data\nWHERE MAG IS NOT NULL\nGROUP BY COALESCE(region, 'Unknown Region')\norder by max_significance\n\n\nselect * from GOLD.yearly_alert\norder by year\n\nselect * from gold.yearly_eq_summary\norder by year",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "Earthquake",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/earthquake external_table')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "IF NOT EXISTS (SELECT * FROM sys.external_file_formats WHERE name = 'SynapseDelimitedTextFormat') \n\tCREATE EXTERNAL FILE FORMAT [SynapseDelimitedTextFormats] \n\tWITH ( FORMAT_TYPE = DELIMITEDTEXT ,\n\t       FORMAT_OPTIONS (\n\t\t\t FIELD_TERMINATOR = ',',\n    \t    STRING_DELIMITER = '\"',\n\t\t\t USE_TYPE_DEFAULT = FALSE\n\t\t\t))\nGO\n\n \n\nIF NOT EXISTS (SELECT * FROM sys.external_data_sources WHERE name = 'newworld_azureprojstorage_dfs_core_windows_net') \n\tCREATE EXTERNAL DATA SOURCE [newworld_azureprojstorage_dfs_core_windows_net] \n\tWITH (\n\t\tLOCATION = 'abfss://newworld@azureprojstorage.dfs.core.windows.net' \n\t)\nGO\n\ndrop EXTERNAL TABLE dbo.earthquake_stg\n\n\n\nCREATE EXTERNAL TABLE dbo.earthquake_stg (\n\tMAG nvarchar(50),\n\tPLACE nvarchar(300),\n\tTIME nvarchar(50),\n\tUPDATED nvarchar(50),\n\tDETAILS nvarchar(300),\n\tFELT nvarchar(50),\n\tCDI nvarchar(50),\n\tMMI nvarchar(50),\n\tALERT nvarchar(50),\n\tSTATUS nvarchar(50),\n\tTSUNAMI nvarchar(50),\n\tSIG nvarchar(50),\n\tNET nvarchar(50),\n\tNST nvarchar(50),\n\tDMIN nvarchar(50),\n\tRMS nvarchar(50),\n\tGAP nvarchar(50),\n\tMAGTYPE nvarchar(50),\n\tLONGITUDE nvarchar(50),\n\tLATITUDE nvarchar(50),\n\tDEPTH nvarchar(50)\n\t)\n\tWITH (\n\tLOCATION = 'Earthquake/silver/earthquake_silver.csv',\n\tDATA_SOURCE = [newworld_azureprojstorage_dfs_core_windows_net],\n\tFILE_FORMAT = [SynapseDelimitedTextFormats] \n\t)\n\t\nGO\n\n\n\nSELECT TOP 100 * FROM dbo.earthquake_stg\n\tWHERE place<>'place'\nGO\n\n\nSELECT TOP 100 \n    max(DATEADD(second, TRY_CAST(TIME AS BIGINT) / 1000, '1970-01-01')) as event_time,\n    min(DATEADD(second, TRY_CAST(TIME AS BIGINT) / 1000, '1970-01-01')) as event_time  FROM dbo.earthquake_stg\n\tWHERE PLACE<>'PLACE'\nGO\n\n \n \n\n select top 5 * from dbo.earthquake_stg\n where felt is not NULL or alert is not null\n\n\n\n \n select ALERT from dbo.earthquake_stg\n group by ALERT\n\n \n",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "Earthquake",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/nyc_taxi')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"folder": {
+					"name": "NYC project/nyc taxi"
+				},
+				"content": {
+					"query": "-- This is auto-generated code\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) AS [result]\n\n--ABFSS\n-- This is auto-generated code\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'abfss://newworld@azureprojstorage.dfs.core.windows.net/nyc_green_taxi_data/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) AS [result]\n\n\n\nEXEC sp_describe_first_result_set N'\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK ''abfss://newworld@azureprojstorage.dfs.core.windows.net/nyc_green_taxi_data/taxi_zone.csv'',\n        FORMAT = ''CSV'',\n        PARSER_VERSION = ''2.0'',\n        HEADER_ROW = TRUE\n    ) AS [result]'\n\n\n\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) AS [result]\n\n--ABFSS\n-- This is auto-generated code\n\nSELECT \n    MAX(LEN(LocationID)) AS LocationID,\n    MAX(LEN(Borough)) AS Borough,\n    MAX(LEN(Zone)) AS Zone,\n    MAX(LEN(service_zone)) AS service_zone\nFROM\n    OPENROWSET(\n        BULK 'abfss://newworld@azureprojstorage.dfs.core.windows.net/nyc_green_taxi_data/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) AS [result]\n\n\n\n    \n\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) \n    WITH(\n        LocationID BIGINT,\n         Borough varchar(30), \n         Zone varchar(60), \n         service_zone varchar(30)\n    )\n    AS [result]\n\n \n\n CREATE DATABASE NYC_TAXI;\n\n USE   NYC_TAXI;\n\n SELECT NAME, COLLATION_NAME FROM SYS.DATABASES\n \n\n\n CREATE EXTERNAL DATA SOURCE NYC\n WITH (\n    LOCATION = 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/taxi_zone.csv'\n )\n\nEXTERNAL DATA SOURCE NYC\n\n CREATE EXTERNAL DATA SOURCE NYC_BRONZE\n WITH (\n    LOCATION = 'https://azureprojstorage.dfs.core.windows.net/newworld/nyc_green_taxi_data/'\n )\n\nDROP EXTERNAL DATA SOURCE NYC\n\n\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'taxi_zone.csv',\n        DATA_SOURCE = 'NYC_BRONZE',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) \n    WITH(\n        LocationID BIGINT,\n         Borough varchar(30), \n         Zone varchar(60), \n         service_zone varchar(30)\n    )\n    AS [result]\n\n\n\n\n\n\n    \n\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'trip_type.tsv',\n        DATA_SOURCE = 'NYC_BRONZE',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        FIELDTERMINATOR = '\\t',\n        HEADER_ROW = TRUE\n    ) \n    AS trip_type\n\n",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "NYC_TAXI",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AzureSparkPool')]",
+			"type": "Microsoft.Synapse/workspaces/bigDataPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"autoPause": {
+					"enabled": false,
+					"delayInMinutes": 5
+				},
+				"autoScale": {
+					"enabled": true,
+					"maxNodeCount": 3,
+					"minNodeCount": 3
+				},
+				"nodeCount": 10,
+				"nodeSize": "Small",
+				"nodeSizeFamily": "MemoryOptimized",
+				"sparkVersion": "3.5",
+				"isComputeIsolationEnabled": false,
+				"sessionLevelPackagesEnabled": false,
+				"annotations": []
+			},
+			"dependsOn": [],
+			"location": "uksouth"
+		}
+	]
+}

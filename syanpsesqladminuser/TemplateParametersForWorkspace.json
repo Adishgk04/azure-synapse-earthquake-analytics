@@ -1,0 +1,27 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"value": "syanpsesqladminuser"
+		},
+		"AzureDataLakeStorage_accountKey": {
+			"value": ""
+		},
+		"syanpsesqladminuser-WorkspaceDefaultSqlServer_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:syanpsesqladminuser.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"AzureDataLakeStorage_properties_typeProperties_url": {
+			"value": "https://azureprojstorage.dfs.core.windows.net/"
+		},
+		"earthquake_source_properties_typeProperties_url": {
+			"value": "https://earthquake.usgs.gov/fdsnws/event/1/"
+		},
+		"public_holiday_sasUri": {
+			"value": ""
+		},
+		"syanpsesqladminuser-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"value": "https://azureprojstorage.dfs.core.windows.net"
+		}
+	}
+}
