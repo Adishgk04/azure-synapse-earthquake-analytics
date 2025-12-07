@@ -1,6 +1,7 @@
 {
 	"name": "earthquake_silver",
 	"properties": {
+		"description": "This pipeline transforms the raw json data to readable csv file.",
 		"activities": [
 			{
 				"name": "earthquake",

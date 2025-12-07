@@ -1,6 +1,7 @@
 {
 	"name": "Earthquake 10 years",
 	"properties": {
+		"description": "This is the parent pipeline which runs a child pipeline to copy 10 years of earthquake data.",
 		"activities": [
 			{
 				"name": "ForEach1",

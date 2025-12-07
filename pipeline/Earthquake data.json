@@ -1,6 +1,7 @@
 {
 	"name": "Earthquake data",
 	"properties": {
+		"description": "This pipeline pulls the data using Rest API and creates a JSON data.",
 		"activities": [
 			{
 				"name": "Copy earthquake data",

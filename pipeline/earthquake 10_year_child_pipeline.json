@@ -1,6 +1,7 @@
 {
 	"name": "earthquake 10_year_child_pipeline",
 	"properties": {
+		"description": "This is a child pipeline which copies 10 years worth of data.",
 		"activities": [
 			{
 				"name": "Until1",
